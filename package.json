@@ -1,0 +1,44 @@
+{
+  "name": "aswaq-badr",
+  "version": "1.0.0",
+  "description": "Aswaq Badr - POS, receiving and inventory",
+  "author": "Aswaq Badr",
+  "main": "electron-main.js",
+  "private": true,
+  "scripts": {
+    "prep": "node scripts/prep.js"
+  },
+  "dependencies": {
+    "xlsx": "0.18.5"
+  },
+  "devDependencies": {
+    "electron": "31.7.7",
+    "electron-builder": "24.13.3"
+  },
+  "build": {
+    "appId": "com.aswaqbadr.pos",
+    "productName": "AswaqBadr",
+    "files": [
+      "electron-main.js",
+      "electron-preload.js",
+      "www/**/*",
+      "build/icon.png"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "أسواق بدر",
+      "artifactName": "AswaqBadr-Setup.${ext}"
+    },
+    "portable": {
+      "artifactName": "AswaqBadr-Portable.${ext}"
+    }
+  }
+}
