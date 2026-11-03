@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld('winApi', {
   listBackups: () => inv('list-backups'),
   restore: (n) => inv('restore-backup', n),
   wipe: () => inv('wipe-data'),
+  odooRpc: (cfg, s, m, a) => inv('odoo-rpc', cfg, s, m, a),
+  machineId: () => inv('machine-id'),
   licLoad: () => inv('lic-load'),
   licSave: (t) => inv('lic-save', t),
   onFlush: (cb) => ipcRenderer.on('flush', async () => { try { await cb(); } catch (e) {} ipcRenderer.send('flushed'); })

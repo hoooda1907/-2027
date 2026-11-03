@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
 const os = require('os');
+const odooClient = require('./odoo-client');
 
 /* منع فتح أكثر من نسخة من البرنامج */
 const gotLock = app.requestSingleInstanceLock();
@@ -43,6 +44,20 @@ ipcMain.handle('db-save', async (e, k, v) => {
   fs.writeFileSync(tmp, JSON.stringify(v));
   fs.renameSync(tmp, f);
   return true;
+});
+
+ipcMain.handle('odoo-rpc', async (e, cfg, service, method, args) => odooClient.call(cfg, service, method, args));
+
+/* رقم الجهاز: بصمة ثابتة من اسم الجهاز وعنوان الشبكة والمعالج */
+ipcMain.handle('machine-id', async () => {
+  const crypto = require('crypto');
+  const macs = [];
+  const ni = os.networkInterfaces();
+  Object.keys(ni).forEach((k) => ni[k].forEach((i) => { if (!i.internal && i.mac && i.mac !== '00:00:00:00:00:00') macs.push(i.mac); }));
+  macs.sort();
+  const raw = [os.hostname(), macs[0] || '', (os.cpus()[0] || {}).model || '', os.platform()].join('|');
+  const h = crypto.createHash('sha256').update('rmt-mid|' + raw).digest('hex').toUpperCase().slice(0, 12);
+  return h.slice(0, 4) + '-' + h.slice(4, 8) + '-' + h.slice(8, 12);
 });
 
 /* ===== الترخيص: نسختان خارج قاعدة البيانات ===== */
