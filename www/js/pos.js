@@ -8,7 +8,7 @@ A.go=t=>go(t.dataset.v);
 A.home=()=>go('home');
 
 /* --- اختيار الفرع ثم نقطة البيع --- */
-V.posBranch=()=>setMain(`<div class="ttl">نقطة البيع — اختر الفرع</div><div class="tiles">${BR.map(b=>`<button class="tile2" data-a="posBr" data-v="${esc(b)}">${esc(b)}</button>`).join('')}</div>`);
+V.posBranch=()=>setMain(`<div class="row"><div class="ttl" style="flex:1;margin:0">نقطة البيع — اختر الفرع</div>${can('offer_view')?'<button class="p" data-a="go" data-v="offers">🏷️ العروض</button>':''}</div><div style="height:10px"></div><div class="tiles">${BR.map(b=>`<button class="tile2" data-a="posBr" data-v="${esc(b)}">${esc(b)}</button>`).join('')}</div>`);
 A.posBr=t=>{POS.br=t.dataset.v;go('posPoints')};
 const openSes=(b,p)=>D.sessions.find(s=>s.status==='open'&&s.br===b&&s.pos===p);
 const posKey=(b,p)=>b+'|'+p;
@@ -16,10 +16,10 @@ const posStaff=(b,p)=>((D.set.posUsers||{})[posKey(b,p)])||[];
 const posAllowed=(b,p)=>{const l=posStaff(b,p);return !l.length||l.includes(ME.name)||can('pos_close')||can('pos_assign')};
 V.posPoints=()=>{
   const b=POS.br;
-  setMain(`<div class="row"><button data-a="go" data-v="posBranch">‹ الفروع</button><div class="ttl" style="flex:1;margin:0">${esc(b)} — اختر نقطة البيع</div></div><div class="tiles" style="margin-top:12px">${POSN.map(p=>{
+  setMain(`<div class="row"><button data-a="go" data-v="posBranch">‹ الفروع</button><div class="ttl" style="flex:1;margin:0">${esc(b)} — اختر نقطة البيع</div></div><div class="tiles" style="margin-top:12px">${posOf(b).map(p=>{
     const s=openSes(b,p),st=posStaff(b,p);
-    const staff=`<div class="mut">الموظفون المصرّح لهم: ${st.length?esc(st.join('، ')):'كل من لديه صلاحية البيع'}</div>${can('pos_assign')?`<button data-a="posStaff" data-b="${esc(b)}" data-v="${p}">👥 تحديد الموظفين</button>`:''}`;
-    return s?`<div class="tile2 open"><b>${p}</b><div class="mut">⚠️ جلسة #${s.id} مفتوحة ولم تُغلق بعد — طلبات معلقة: ${heldOf(s.id).length}</div><div class="mut">فتحها ${esc(s.user)} — ${esc(s.odt)}</div>${staff}<div class="row"><button class="f p" data-a="posResume" data-id="${s.id}">استكمال البيع</button>${can('pos_close')?`<button class="f" data-a="sesClose" data-id="${s.id}">إغلاق الجلسة</button>`:''}</div></div>`
+    const staff=`<div class="mut">الموظفون المصرّح لهم: ${st.length?esc(st.join('، ')):'كل من لديه صلاحية البيع'}</div>${can('offer_view')?'<button data-a="go" data-v="offers">🏷️ العروض</button>':''}${can('pos_assign')?`<button data-a="posStaff" data-b="${esc(b)}" data-v="${p}">👥 تحديد الموظفين</button>`:''}`;
+    return s?`<div class="tile2 open"><b>${p}</b><div class="mut">⚠️ جلسة #${s.id} مفتوحة ولم تُغلق بعد — طلبات معلقة: ${liveHeld(s.id).length}</div><div class="mut">فتحها ${esc(s.user)} — ${esc(s.odt)}</div>${staff}<div class="row"><button class="f p" data-a="posResume" data-id="${s.id}">استكمال البيع</button>${can('pos_close')?`<button class="f" data-a="sesClose" data-id="${s.id}">إغلاق الجلسة</button>`:''}</div></div>`
     :`<div class="tile2"><b>${p}</b><div class="mut">لا توجد جلسة مفتوحة</div>${staff}<button class="p" data-a="posOpen" data-v="${p}">فتح جلسة</button></div>`}).join('')}</div>`);
 };
 A.posStaff=t=>{
@@ -55,6 +55,8 @@ A.posResume=t=>{
 
 /* --- الطلبات المعلّقة (3 لكل موظف افتراضيًا، والحذف للمدير فقط) --- */
 const heldOf=sid=>D.held.filter(o=>o.ses===sid);
+/* طلب معلق فعلي = به أصناف وقيمته أكبر من صفر (الفارغ أو صفر القيمة لا يمنع إغلاق الجلسة) */
+const liveHeld=sid=>heldOf(sid).filter(o=>o.lines.length&&r2(o.lines.reduce((s,l)=>s+l.price*l.qty,0))>0);
 const maxOrd=()=>ME.admin?50:(ME.maxOrders>0?ME.maxOrders:3);
 function mkOrder(){
   const s=POS.ses,mine=heldOf(s.id).filter(o=>o.user===ME.name).length;
@@ -89,8 +91,9 @@ V.pos=()=>{
   setMain(`<div class="pos">
   <div class="op">
     <div class="oph">جلسة #${s.id} — ${esc(s.br)} / ${esc(s.pos)}</div>
-    <div class="row" style="padding:6px 8px"><button id="cchip" data-a="posCust" class="f"></button></div>
+    <div class="row" style="padding:6px 8px"><button id="cchip" data-a="posCust" class="f"></button>${can('pos_discount')?'<button data-a="posDisc">🏷️ خصم</button>':''}</div>
     <div class="ol" id="ol"></div>
+    <div id="odisc" class="mut" style="padding:2px 10px"></div>
     <div class="ot"><span>الإجمالي</span><span id="otot">0.00</span></div>
     <div class="npd">${['1','2','3','4','5','6','7','8','9','.','0','⌫'].map(k=>`<button data-a="npk" data-k="${k}">${k}</button>`).join('')}
       <button class="d" data-a="posDel">حذف السطر</button>${can('pos_delorder')?'<button class="d" data-a="posClr">مسح الطلب</button>':'<span></span>'}<button data-a="posRev">الفواتير</button></div>
@@ -106,10 +109,13 @@ V.pos=()=>{
   </div></div>`,'posm');
   renderAllPos();renderCats();renderGrid();$('pq').focus();
 };
-const orderTotal=()=>r2(curOrder().lines.reduce((s,l)=>s+l.price*l.qty,0));
+const orderGross=o=>r2(o.lines.reduce((s,l)=>s+l.price*l.qty,0));
+function orderDisc(o){const g=orderGross(o);if(!o.disc||!g)return 0;const v=o.disc.mode==='pct'?g*o.disc.val/100:o.disc.val;return r2(Math.min(Math.max(v,0),g))}
+const orderTotal=()=>{const o=curOrder();return r2(orderGross(o)-orderDisc(o))};
 function renderOrder(){
   const o=curOrder();
-  $('ol').innerHTML=o.lines.map((l,i)=>`<div class="ln${i===o.sel?' sel':''}" data-a="posSel" data-i="${i}"><div class="n">${esc(l.n)}</div><div class="dd">${fmt(l.qty)} × ${money(l.price)}</div><div class="t">${money(l.price*l.qty)}</div></div>`).join('')||'<div class="mut" style="padding:20px;text-align:center">الطلب فارغ</div>';
+  $('ol').innerHTML=o.lines.map((l,i)=>`<div class="ln${i===o.sel?' sel':''}" data-a="posSel" data-i="${i}"><div class="n">${esc(l.n)}</div><div class="dd">${fmt(l.qty)} × ${money(l.price)}${l.orig>l.price?` <span class="badge b-done">عرض — خصم ${money((l.orig-l.price)*l.qty)}</span>`:''}</div><div class="t">${money(l.price*l.qty)}</div></div>`).join('')||'<div class="mut" style="padding:20px;text-align:center">الطلب فارغ</div>';
+  const dv=orderDisc(o);$('odisc').innerHTML=dv>0?`خصم ${o.disc.mode==='pct'?o.disc.val+'%':''} : <b>− ${money(dv)}</b> ${can('pos_discount')?'<span data-a="posDiscClr" style="cursor:pointer;color:var(--bad);font-weight:700">✕ إلغاء الخصم</span>':''}`:'';
   $('otot').textContent=money(orderTotal());
   const e=$('ol').querySelector('.sel');if(e)e.scrollIntoView({block:'nearest'});
   save('held');
@@ -140,9 +146,10 @@ K.posQ=(t,e)=>{
 };
 A.posProd=t=>{const p=PI.id[t.dataset.id];if(p)posAdd(p,0)};
 function posAdd(p,q){
-  const price=parseFloat(p.price);
-  if(isNaN(price)){say('لا يوجد سعر لهذا الصنف',1);return}
-  const o=curOrder();o.lines.push({id:p.id,n:p.name,b:p.bc,price,cost:pCost(p),cat:p.cat||'',qty:q>0?q:1});
+  if(isNaN(parseFloat(p.price))){say('لا يوجد سعر لهذا الصنف',1);return}
+  const ef=effPrice(p,POS.ses&&POS.ses.br),price=ef.price;
+  if(lossBlocked(p,price)){say('لا يمكن بيع «'+p.name+'» بأقل من التكلفة (التكلفة '+money(pCost(p))+' والسعر '+money(price)+') — يلزم صلاحية «البيع بخسارة» أو تفعيل السماح داخل المنتج',1);return}
+  const o=curOrder();o.lines.push({id:p.id,n:p.name,b:p.bc,price,orig:ef.offer?ef.orig:undefined,cost:pCost(p),cat:p.cat||'',qty:q>0?q:1});
   o.sel=o.lines.length-1;POS.buf=String(o.lines[o.sel].qty);POS.fresh=true;say('');renderOrder();renderOrdersBar();
   const f=$('pq');if(f)f.focus();
 }
@@ -165,6 +172,24 @@ A.posClr=async()=>{
   const o=curOrder();if(o.lines.length&&await dlg('مسح أصناف الطلب الحالي؟',{yes:'مسح'})){o.lines=[];o.sel=-1;renderOrder();renderOrdersBar()}
 };
 A.posRev=()=>{if(can('pos_review'))go('review');else say('ليس لديك صلاحية مراجعة الفواتير',1)};
+
+/* --- خصم نقطة البيع (نسبة أو مبلغ) --- */
+A.posDisc=async()=>{
+  if(!can('pos_discount')){say('ليس لديك صلاحية إعطاء خصم',1);return}
+  const o=curOrder(),g=orderGross(o);if(!g){say('أضف أصنافًا أولًا',1);return}
+  const maxP=ME.admin?100:(ME.maxDisc>=0?ME.maxDisc:10);
+  const r=await formDlg('خصم على الطلب',[{k:'m',l:'نوع الخصم',t:'select',o:['نسبة %','مبلغ'],v:o.disc&&o.disc.mode==='amt'?'مبلغ':'نسبة %'},{k:'v',l:'القيمة',t:'number',v:o.disc?o.disc.val:''},{k:'n',l:'السبب (اختياري)',t:'text',v:o.disc?o.disc.reason||'':''}],'تطبيق الخصم');
+  if(!r)return;
+  const v=num(r.v),mode=r.m==='مبلغ'?'amt':'pct';
+  if(isNaN(v)||v<=0){say('اكتب قيمة الخصم',1);return}
+  const amt=mode==='pct'?g*v/100:v,pct=amt/g*100;
+  if(pct>maxP+1e-9){say('الخصم أكبر من الحد المسموح لك ('+maxP+'%)',1);return}
+  if(amt>g){say('الخصم أكبر من قيمة الطلب',1);return}
+  const f=1-amt/g;const bad=o.lines.find(l=>{const p=PI.id[l.id];return p&&lossBlocked(p,l.price*f)});
+  if(bad){say('الخصم يجعل «'+bad.n+'» أقل من التكلفة — غير مسموح',1);return}
+  o.disc={mode,val:v,reason:norm(r.n)};save('held');renderOrder();say('تم تطبيق الخصم');
+};
+A.posDiscClr=()=>{const o=curOrder();delete o.disc;save('held');renderOrder()};
 
 /* --- اختيار العميل --- */
 A.posCust=()=>{
@@ -249,7 +274,14 @@ A.payOk=async()=>{
   if((m==='أجل'||paid<t)&&!o.cust){say('اختر العميل أولًا — البيع الأجل أو الدفع الجزئي يحتاج حساب عميل',1);return}
   const s=POS.ses,now=new Date();
   const doc={no:++D.cnt.sale,type:'sale',ts:now.getTime(),dt:nowStr(now),day:dayStr(now),br:s.br,pos:s.pos,session:s.id,user:ME.name,cust:o.cust||null,custName:o.custName||'',
-    lines:o.lines.map(l=>({id:l.id,n:l.n,b:l.b,price:l.price,cost:l.cost,cat:l.cat,qty:l.qty})),total:t,paid,method:m,ret:o.lines.map(()=>0)};
+    lines:o.lines.map(l=>({id:l.id,n:l.n,b:l.b,price:l.price,orig:l.orig,cost:l.cost,cat:l.cat,qty:l.qty})),total:t,paid,method:m,ret:o.lines.map(()=>0)};
+  const dsc=orderDisc(o);
+  if(dsc>0){
+    /* توزيع الخصم على الأصناف: تصبح أسعار الأصناف صافية بعد الخصم فتتسق التقارير والمرتجعات */
+    const g=orderGross(o);let left=t;
+    doc.lines.forEach((l,i)=>{const lt=i===doc.lines.length-1?left:r2(l.price*l.qty*(t/g));left=r2(left-lt);l.pre=l.price;l.price=r3(lt/l.qty)});
+    doc.disc=dsc;doc.discNote=(o.disc.mode==='pct'?o.disc.val+'%':'مبلغ')+(o.disc.reason?' — '+o.disc.reason:'');doc.gross=g;
+  }
   D.sales.push(doc);doc.lines.forEach(l=>addStk(doc.br,l.id,-l.qty));
   D.held.splice(D.held.indexOf(o),1);POS.oid=0;POS.payOpen=false;
   save('sales','stock','cnt','held');closeModal();await flush();saveSes(doc.session);if(doc.cust)saveCusStmt(doc.cust);
@@ -265,14 +297,20 @@ A.posNew=()=>go('pos');
 /* --- الفاتورة المطبوعة --- */
 function rcptHtml(r){
   const ret=r.type==='return';
-  const rows=r.lines.map(l=>`<tr><td class="nm">${esc(l.n)}</td><td>${fmt(l.qty)}</td><td>${money(l.price)}</td><td>${money(l.price*l.qty)}</td></tr>`).join('');
+  const rows=r.lines.map(l=>`<tr><td class="nm">${esc(l.n)}${l.orig>l.price?' (عرض)':''}</td><td>${fmt(l.qty)}</td><td>${money(l.price)}</td><td>${money(l.price*l.qty)}</td></tr>`).join('');
   const diff=r2(r.paid-r.total);
   const foot=ret?`<div class="rr"><span>إجمالي المرتجع</span><span>${money(-r.total)}</span></div><div class="rr"><span>طريقة الاسترداد</span><span>${esc(r.method)}</span></div>`
-   :`<div class="rr"><span>المبلغ المستحق</span><span>${money(r.total)}</span></div><div class="rr"><span>المبلغ المدفوع (${esc(r.method)})</span><span>${money(r.paid)}</span></div><div class="rr"><span>${diff>=0?'الباقي':'المتبقي على العميل'}</span><span>${money(Math.abs(diff))}</span></div>`;
-  return `<img src="logo.png" alt=""><div class="t">${ret?'فاتورة مرتجع':'فاتورة'} رقم ${pno(r.no)}</div>${ret&&r.ref?`<div class="c">عن الفاتورة رقم ${pno(r.ref)}</div>`:''}<div class="c">${esc(r.dt)}</div><div class="c">${esc(r.br)} — ${esc(r.pos||'')} — ${esc(r.user)}</div>${r.custName?`<div class="c">العميل: ${esc(r.custName)}</div>`:''}<hr><table><thead><tr><th>الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead><tbody>${rows}</tbody></table><hr>${foot}`;
+   :`${r.disc>0?`<div class="rr"><span>الإجمالي قبل الخصم</span><span>${money(r.gross)}</span></div><div class="rr"><span>إجمالي الخصم</span><span>− ${money(r.disc)}</span></div>`:''}${savings(r)>0?`<div class="rr"><span>إجمالي قيمة التوفير</span><span>${money(savings(r))}</span></div>`:''}<div class="rr"><span>المبلغ المستحق</span><span>${money(r.total)}</span></div><div class="rr"><span>المبلغ المدفوع (${esc(r.method)})</span><span>${money(r.paid)}</span></div><div class="rr"><span>${diff>=0?'الباقي':'المتبقي على العميل'}</span><span>${money(Math.abs(diff))}</span></div>`;
+  return `<img src="${logoSrc()}" alt=""><div class="t">${ret?'فاتورة مرتجع':'فاتورة'} رقم ${pno(r.no)}</div>${ret&&r.ref?`<div class="c">عن الفاتورة رقم ${pno(r.ref)}</div>`:''}<div class="c">${esc(r.dt)}</div><div class="c">${esc(r.br)} — ${esc(r.pos||'')} — ${esc(r.user)}</div>${r.custName?`<div class="c">العميل: ${esc(r.custName)}</div>`:''}<hr><table><thead><tr><th>الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead><tbody>${rows}</tbody></table><hr>${foot}`;
 }
 const rcptDiv=d=>`<div class="rcpt">${rcptHtml(d)}</div>`;
-function printDoc(d){$('pa').innerHTML=rcptHtml(d);window.print()}
+/* الطباعة: kind=rcpt إيصال 90 مم، kind=a4 مستند A4 */
+function printHtml(html,kind){
+  const pa=$('pa');pa.className=kind==='a4'?'a4doc':'rcpt';pa.innerHTML=html;
+  $('pgs').textContent=kind==='a4'?'@page{size:A4;margin:12mm}':'@page{size:90mm auto;margin:0}';
+  window.print();
+}
+function printDoc(d){printHtml(rcptHtml(d),'rcpt')}
 
 /* --- ملف Excel الخاص بكل جلسة: نقطة البيع / الفرع / التاريخ / نقطة البيع / "الفرع - الموظف - التاريخ" --- */
 function sesFile(s){
@@ -319,20 +357,21 @@ V.sesClose=id=>{
   const rows=METHODS.map(m=>{const x=c.m[m],exp=sesExp(c,m,s.opening);net+=x.s+x.r;
     return `<tr><td>${m}</td><td>${money(x.s)}</td><td>${money(-x.r)}</td><td>${m==='أجل'?'—':money(exp)}</td><td>${m==='أجل'?'—':`<input inputmode="decimal" data-i="sesAct" data-m="${m}" data-e="${exp}">`}</td><td class="df">—</td></tr>`}).join('');
   setMain(`<div class="row"><button data-a="go" data-v="posPoints">‹ رجوع</button><div class="ttl" style="margin:0;flex:1">إغلاق الجلسة #${s.id} — ${esc(s.br)} / ${esc(s.pos)}</div></div>
-  <div class="card mut">فتحها ${esc(s.user)} في ${esc(s.odt)} — رصيد البداية: ${money(s.opening)} — مصروفات: ${money(c.ex)} — إيرادات: ${money(c.inc)} — تحصيلات من العملاء: ${money(Object.values(c.col).reduce((a,b)=>a+b,0))}${heldOf(s.id).length?` — <b class="err">طلبات معلقة: ${heldOf(s.id).length} (يجب إنهاؤها أو حذفها قبل الإغلاق)</b>`:''}</div>
+  <div class="card mut">فتحها ${esc(s.user)} في ${esc(s.odt)} — رصيد البداية: ${money(s.opening)} — مصروفات: ${money(c.ex)} — إيرادات: ${money(c.inc)} — تحصيلات من العملاء: ${money(Object.values(c.col).reduce((a,b)=>a+b,0))}${liveHeld(s.id).length?` — <b class="err">طلبات معلقة: ${liveHeld(s.id).length} (يجب إنهاؤها أو حذفها قبل الإغلاق)</b>`:''}</div>
   <div class="card">${tbl(['الطريقة','المبيعات','المرتجعات','المتوقع','الفعلي','الفرق'],rows)}<div class="ttl" style="text-align:center;margin-top:10px">صافي المبيعات: ${money(net)}</div>
   <button class="p" style="width:100%" data-a="sesDo" data-id="${s.id}">🔒 إغلاق الجلسة</button></div>`);
 };
 I.sesAct=t=>{const a=num(t.value);t.closest('tr').querySelector('.df').textContent=isNaN(a)?'—':diffTxt(r2(a-(+t.dataset.e)))};
 A.sesDo=async t=>{
   const s=D.sessions.find(x=>x.id==t.dataset.id);if(!s)return;
-  if(heldOf(s.id).length){say('يوجد '+heldOf(s.id).length+' طلبات معلقة في هذه الجلسة، أكملها أو احذفها أولًا',1);return}
+  if(liveHeld(s.id).length){say('يوجد '+liveHeld(s.id).length+' طلبات معلقة في هذه الجلسة، أكملها أو احذفها أولًا',1);return}
   const c=sesCalc(s.id),act={},exp={},df={};let bad=false;
   document.querySelectorAll('#main input[data-m]').forEach(i=>{const a=num(i.value);if(isNaN(a)||a<0)bad=true;else act[i.dataset.m]=a});
   if(bad){say('اكتب المبلغ الفعلي الموجود لكل طريقة دفع',1);return}
   METHODS.forEach(m=>{exp[m]=sesExp(c,m,s.opening);if(act[m]!==undefined)df[m]=r2(act[m]-exp[m])});
   const tot=r2(Object.values(df).reduce((a,b)=>a+b,0));
   if(!(await dlg('نتيجة الجرد: '+diffTxt(tot)+'\nهل تريد إغلاق الجلسة؟',{yes:'إغلاق الجلسة',no:'رجوع'})))return;
+  D.held=D.held.filter(o=>o.ses!==s.id);save('held');
   Object.assign(s,{status:'closed',cdt:nowStr(),cby:ME.name,exp,act,df,diff:tot,sum:c});
   save('sessions');await flush();
   await saveSes(s.id);
@@ -354,10 +393,10 @@ function rvList(){
   const sl=l.filter(d=>d.type==='sale'),rt=l.filter(d=>d.type==='return');
   const st=r2(sl.reduce((s,d)=>s+d.total,0)),rv=r2(rt.reduce((s,d)=>s+d.total,0));
   $('vSum').textContent=`مبيعات: ${money(st)} — مرتجعات: ${money(-rv)} — الصافي: ${money(st+rv)} — عدد الفواتير: ${sl.length}`;
-  $('vList').innerHTML=l.length?tbl(['#','الوقت','الفرع','نقطة البيع','المستخدم','العميل','الدفع','الإجمالي','الحالة'],l.slice(0,200).map(d=>{
+  $('vList').innerHTML=l.length?tbl(['#','الوقت','الفرع','نقطة البيع','المستخدم','العميل','الدفع','الإجمالي','الحالة','أودو'],l.slice(0,200).map(d=>{
     const rq=(d.ret||[]).reduce((a,b)=>a+b,0),tq=d.lines.reduce((a,x)=>a+x.qty,0);
     const tag=d.type==='return'?'<span class="badge b-cancel">مرتجع</span>':(rq>0?`<span class="badge b-draft">${rq>=tq?'مرتجع كلي':'مرتجع جزئي'}</span>`:'');
-    return `<tr class="clk" data-a="rvOpen" data-no="${d.no}"><td>${pno(d.no)}</td><td>${esc(d.dt.slice(-8))}</td><td>${esc(d.br)}</td><td>${esc(d.pos||'')}</td><td>${esc(d.user)}</td><td>${esc(d.custName||'')}</td><td>${esc(d.method)}</td><td><b>${money(d.total)}</b></td><td>${tag}</td></tr>`}).join('')):'<div class="mut">لا توجد فواتير</div>';
+    return `<tr class="clk" data-a="rvOpen" data-no="${d.no}"><td>${pno(d.no)}</td><td>${esc(d.dt.slice(-8))}</td><td>${esc(d.br)}</td><td>${esc(d.pos||'')}</td><td>${esc(d.user)}</td><td>${esc(d.custName||'')}</td><td>${esc(d.method)}</td><td><b>${money(d.total)}</b></td><td>${tag}</td><td>${syBadge(d)}</td></tr>`}).join('')):'<div class="mut">لا توجد فواتير</div>';
 }
 A.rvOpen=t=>{
   const d=D.sales.find(x=>String(x.no)===t.dataset.no);if(!d)return;RV.doc=d;

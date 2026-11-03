@@ -8,9 +8,9 @@ V.accounts=()=>{
   setMain(`<div class="ttl">الحسابات — تقارير المبيعات والأرباح</div>
   <div class="card"><div class="g2">
    <div><div class="lbl">من يوم</div><input type="date" id="rf" value="${d1}"></div><div><div class="lbl">إلى يوم</div><input type="date" id="rt" value="${t}"></div>
-   <div><div class="lbl">الفرع</div><select id="rb">${opt(BR,'كل الفروع')}</select></div><div><div class="lbl">نقطة البيع</div><select id="rp">${opt(POSN,'الكل')}</select></div>
+   <div><div class="lbl">الفرع</div><select id="rb">${opt(BR,'كل الفروع')}</select></div><div><div class="lbl">نقطة البيع</div><select id="rp">${opt(allPos(),'الكل')}</select></div>
    <div><div class="lbl">رقم الجلسة</div><input id="rs" inputmode="numeric" placeholder="الكل"></div><div><div class="lbl">فئة المنتج</div><select id="rc">${opt(PI.cats,'كل الفئات')}</select></div>
-   <div><div class="lbl">الموظف</div><select id="ru">${opt(D.employees.map(e=>e.name).concat(['أسواق بدر']),'الكل')}</select></div>
+   <div><div class="lbl">الموظف</div><select id="ru">${opt(D.employees.map(e=>e.name).concat([adminName()]),'الكل')}</select></div>
    <div><div class="lbl">تجميع حسب</div><select id="rg">${GROUPS.map(g=>`<option value="${g[0]}">${g[1]}</option>`).join('')}</select></div></div>
    <div class="row" style="margin-top:10px"><button class="p" data-a="accRun">عرض التقرير</button><button data-a="accExp">⬇️ تصدير Excel</button></div></div><div id="accOut"></div>`);
 };

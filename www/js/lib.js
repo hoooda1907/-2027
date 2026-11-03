@@ -24,7 +24,7 @@ function sha256(s){
   return h.map(x=>('00000000'+(x>>>0).toString(16)).slice(-8)).join('');
 }
 const H=s=>sha256('aswaq-badr|'+s);
-const OWNER_H='b7a951ceb193ade6515588f213e61ca76226e7280cd595f581f442f9d084eeb9',CODE_H='3e6ada63eb2f92b96a84cd242fe68a28ef8e955200bddd1eb3396356e9e8432f',ADMIN_H0='20636d9b6b00ae3add017aa5ed88deda0f7ec6ea12c5efe0f366718ac418b8a0';
+const OWNER_H='b7a951ceb193ade6515588f213e61ca76226e7280cd595f581f442f9d084eeb9',CODE_H='3e6ada63eb2f92b96a84cd242fe68a28ef8e955200bddd1eb3396356e9e8432f',ADMIN_H0='304e3eed7e2eecb9792fed27da6989f762fed74f004dc79cbedca4be27652c97',YEAR_H='d818f5557bf058fd0695a306fb50e54b64c8ab464e63c13cff0fc1409345b5eb',LIFE_H='4b0242b71fa941f46bfde4d72a8e30c9d5f9cf0dcc36c66541304fbc698d7ab9',TRIAL_H='852b42d2aec13e4a64854d682cadcf9a9e37140e17d46d04c3d696940ac43662',ACT_H='0440aae04fd7f840a128a15376de942ccd3e389a328bd9d571bcfdeed2c11ef9',SFX_H='43acb0311380a82ce20106491adbce82c4eb0489d7645b800e6bfe7443675e61';
 const r2=n=>Math.round((+n||0)*100)/100;
 const r3=n=>Math.round((+n||0)*1000)/1000;
 const fmt=n=>String(r3(n));
@@ -37,8 +37,13 @@ const pno=n=>String(n).padStart(5,'0');
 const diffTxt=d=>d>0?`+${money(d)} زيادة`:d<0?`${money(d)} عجز`:'مطابق';
 const tbl=(h,rows,cls)=>`<div class="tw"><table class="${cls||''}"><thead><tr>${h.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
 
-const BR=['شارع الإسكندرية','فرع المساكن','المخازن الرئيسية','جراند هيلز'];
-const POSN=['صباحي 1','صباحي 2','مسائي 1','مسائي 2'];
+/* الفروع ونقاط البيع (قابلة للإضافة والحذف وتغيير الاسم من شاشة الفروع) */
+const BR=[];
+const DEFBR=[{name:'الفرع الرئيسي',pos:['صباحي 1','صباحي 2','مسائي 1','مسائي 2']}];
+const brCfg=()=>(D.set.branches&&D.set.branches.length)?D.set.branches:DEFBR;
+function syncBranches(){BR.length=0;brCfg().forEach(b=>BR.push(b.name))}
+const posOf=b=>{const x=brCfg().find(y=>y.name===b);return x?x.pos:[]};
+const allPos=()=>{const o=[];brCfg().forEach(b=>b.pos.forEach(p=>{if(!o.includes(p))o.push(p)}));return o};
 const METHODS=['نقدي','فيزا','فودافون كاش','أجل','أخرى'];
 
 function say(m,err){const t=$('toast');if(!t)return;t.textContent=m;t.className=err?'show err':'show';clearTimeout(say._t);say._t=setTimeout(()=>{t.className=''},err?7000:3500)}
@@ -87,8 +92,8 @@ document.addEventListener('change',e=>{const t=e.target.closest('[data-c]');if(t
 document.addEventListener('keydown',e=>{const t=e.target.closest('[data-k]');if(t&&K[t.dataset.k])K[t.dataset.k](t,e)});
 
 /* ===== قاعدة البيانات (ملفات JSON عبر Electron) ===== */
-const D={products:[],stock:{},sales:[],sessions:[],cash:[],purchases:[],suppliers:[],payments:[],transfers:[],employees:[],customers:[],cpay:[],held:[],
-  cnt:{sale:0,pur:0,ses:0,tr:0,pay:0,cash:0,prod:0,sup:0,emp:0,cus:0,cpay:0,ord:0},set:{}};
+const D={products:[],stock:{},sales:[],sessions:[],cash:[],purchases:[],suppliers:[],payments:[],transfers:[],employees:[],customers:[],cpay:[],held:[],boms:[],mfg:[],
+  cnt:{sale:0,pur:0,ses:0,tr:0,pay:0,cash:0,prod:0,sup:0,emp:0,cus:0,cpay:0,ord:0,mfg:0},set:{}};
 const api=(typeof window!=='undefined'&&window.winApi)?window.winApi:null;
 async function dbSet(k,v){
   if(api&&api.dbSave)return api.dbSave(k,v);
@@ -99,7 +104,8 @@ async function dbLoad(){
   if(api&&api.dbLoad)all=(await api.dbLoad())||{};
   else Object.keys(D).forEach(k=>{try{const v=localStorage.getItem('db_'+k);if(v)all[k]=JSON.parse(v)}catch(e){}});
   Object.keys(D).forEach(k=>{if(all[k]!==undefined&&all[k]!==null)D[k]=all[k]});
-  D.cnt=Object.assign({sale:0,pur:0,ses:0,tr:0,pay:0,cash:0,prod:0,sup:0,emp:0,cus:0,cpay:0,ord:0},D.cnt);
+  D.cnt=Object.assign({sale:0,pur:0,ses:0,tr:0,pay:0,cash:0,prod:0,sup:0,emp:0,cus:0,cpay:0,ord:0,mfg:0},D.cnt);
+  syncBranches();
 }
 const _dirty={};let _tmr=null;
 function save(){for(let i=0;i<arguments.length;i++)_dirty[arguments[i]]=1;clearTimeout(_tmr);_tmr=setTimeout(flush,400)}
@@ -131,4 +137,7 @@ function mapCols(h,spec){
   h.forEach((c,i)=>{const t=norm(c).toLowerCase();for(const s of spec){if(o[s[0]]===undefined&&s[1].test(t)){o[s[0]]=i;break}}});
   return o;
 }
+/* الشعار: يمكن رفع شعار خاص يظهر في كل مكان (الفواتير والمشتريات والواجهة) */
+const logoSrc=()=>D.set.logo||'logo.png';
+function applyLogo(){document.querySelectorAll('.applogo').forEach(i=>{i.src=logoSrc()})}
 function setMain(h,cls){const m=$('main');m.className=cls||'';m.innerHTML=h;m.scrollTop=0}

@@ -42,19 +42,19 @@ I.puFlt=C.puFlt=()=>puList();
 function puList(){
   const q=nm($('puF').value),st=$('puS').value;
   const l=D.purchases.filter(d=>(!st||d.status===st)&&(!q||nm(d.supName).includes(q)||String(d.id)===q)).slice().sort((a,b)=>b.id-a.id).slice(0,200);
-  $('puL').innerHTML=l.length?tbl(['#','اسم المورد','التاريخ','القائم بالاستلام','الفرع','قيمة الفاتورة','الحالة'],l.map(d=>`<tr class="clk" data-a="purOpen" data-id="${d.id}"><td>${d.id}</td><td class="l">${esc(d.supName)}</td><td>${esc(d.date)}</td><td>${esc(d.emp)}</td><td>${esc(d.br)}</td><td><b>${money(puTotal(d))}</b></td><td><span class="badge ${ST[d.status][1]}">${ST[d.status][0]}</span></td></tr>`).join('')):'<div class="mut">لا توجد فواتير مشتريات</div>';
+  $('puL').innerHTML=l.length?tbl(['#','اسم المورد','التاريخ','القائم بالاستلام','الفرع','قيمة الفاتورة','الحالة','أودو'],l.map(d=>`<tr class="clk" data-a="purOpen" data-id="${d.id}"><td>${d.id}</td><td class="l">${esc(d.supName)}</td><td>${esc(d.date)}</td><td>${esc(d.emp)}</td><td>${esc(d.br)}</td><td><b>${money(puTotal(d))}</b></td><td><span class="badge ${ST[d.status][1]}">${ST[d.status][0]}</span></td><td>${d.status==='received'?syBadge(d):''}</td></tr>`).join('')):'<div class="mut">لا توجد فواتير مشتريات</div>';
 }
 A.purOpen=t=>go('purEdit',+t.dataset.id);
 A.purNew=()=>{
   if(!can('pur_edit')){say('ليس لديك صلاحية',1);return}
-  const d={id:++D.cnt.pur,sup:null,supName:'',date:dayStr(),emp:ME.name,br:BR[2],status:'draft',lines:[]};
+  const d={id:++D.cnt.pur,sup:null,supName:'',date:dayStr(),emp:ME.name,br:BR[0],status:'draft',lines:[]};
   D.purchases.push(d);save('purchases','cnt');go('purEdit',d.id);
 };
 V.purEdit=id=>{
   const d=D.purchases.find(x=>x.id===id);if(!d){go('purchases');return}
   PU.doc=d;const ed=d.status==='draft'&&can('pur_edit');
   const hd=(l,f,t,dis)=>`<div><div class="lbl">${l}</div><input ${t?`type="${t}"`:''} value="${esc(d[f])}" data-c="purHdr" data-f="${f}"${(!ed||dis)?' disabled':''}${f==='sup'?'':''}></div>`;
-  setMain(`<div class="row"><button data-a="go" data-v="purchases">‹ المشتريات</button><div class="ttl" style="margin:0;flex:1">فاتورة مشتريات #${d.id} <span class="badge ${ST[d.status][1]}">${ST[d.status][0]}</span></div></div>
+  setMain(`<div class="row"><button data-a="go" data-v="purchases">‹ المشتريات</button><div class="ttl" style="margin:0;flex:1">فاتورة مشتريات #${d.id} <span class="badge ${ST[d.status][1]}">${ST[d.status][0]}</span> ${d.status==='received'?syBadge(d):''}</div></div>
   <div class="card"><div class="g2">
    <div><div class="lbl">اسم المورد</div><input list="supList" value="${esc(d.supName)}" data-c="purHdr" data-f="supName"${ed?'':' disabled'}><datalist id="supList">${D.suppliers.map(s=>`<option value="${esc(s.name)}">`).join('')}</datalist></div>
    ${hd('التاريخ','date','date')}
@@ -63,7 +63,7 @@ V.purEdit=id=>{
   </div></div>
   <div class="card">${ed?'<input id="puAdd" data-k="puAdd" data-i="puAddQ" placeholder="امسح الباركود أو اكتب اسم الصنف ثم Enter لإضافته" autocomplete="off"><div id="puRes"></div>':''}<div id="puLines"></div>
    <div class="ttl" style="text-align:center;margin-top:8px">إجمالي الفاتورة: <span id="puTot">0.00</span></div>
-   <div class="row">${ed&&can('pur_confirm')?'<button class="f p" data-a="purRecv">✅ تأكيد الاستلام</button>':''}${d.status!=='cancelled'&&can('pur_cancel')?'<button class="f d" data-a="purCancel">⛔ إلغاء الفاتورة</button>':''}${ed&&!d.lines.length?'<button class="f d" data-a="purDel">🗑 حذف المسودة</button>':''}</div></div>`);
+   <div class="row"><button data-a="purPrint">🖨 طباعة الفاتورة</button>${ed&&can('pur_confirm')?'<button class="f p" data-a="purRecv">✅ تأكيد الاستلام</button>':''}${d.status!=='cancelled'&&can('pur_cancel')?'<button class="f d" data-a="purCancel">⛔ إلغاء الفاتورة</button>':''}${ed&&!d.lines.length?'<button class="f d" data-a="purDel">🗑 حذف المسودة</button>':''}</div></div>`);
   puLines();if(ed)$('puAdd').focus();
 };
 C.purHdr=t=>{
@@ -102,6 +102,16 @@ K.puAdd=(t,e)=>{
   if(e.key!=='Enter')return;const v=norm(t.value);if(!v)return;
   let m=find(v);if(!m.length)m=search(v,3);
   if(m.length===1)puAddProd(m[0],scaleQty(v,m[0]));else if(!m.length)say('الصنف غير موجود',1);
+};
+/* طباعة فاتورة المشتريات (A4): المورد والتاريخ والأصناف وإجمالي كل صنف وإجمالي الفاتورة */
+A.purPrint=()=>{
+  const d=PU.doc;if(!d.lines.length){say('لا توجد بنود للطباعة',1);return}
+  const rows=d.lines.map((l,i)=>`<tr><td>${i+1}</td><td style="text-align:right">${esc(l.n)}</td><td>${fmt(l.qty)}</td><td>${money(l.cost)}</td><td>${money(l.qty*l.cost)}</td></tr>`).join('');
+  printHtml(`<img class="pl" src="${logoSrc()}" alt=""><h2>فاتورة مشتريات رقم ${d.id}</h2>
+  <div class="mt"><span>اسم المورد: <b>${esc(d.supName)}</b></span><span>التاريخ: <b>${esc(d.date)}</b></span></div>
+  <div class="mt"><span>الفرع: ${esc(d.br)}</span><span>القائم بالاستلام: ${esc(d.emp)}</span><span>الحالة: ${ST[d.status][0]}</span></div>
+  <table><thead><tr><th>م</th><th>الصنف</th><th>الكمية</th><th>تكلفة الوحدة</th><th>إجمالي الصنف</th></tr></thead><tbody>${rows}</tbody></table>
+  <div class="gt2">إجمالي الفاتورة: ${money(puTotal(d))}</div>`,'a4');
 };
 A.purDel=async()=>{
   if(!(await dlg('حذف هذه المسودة؟',{yes:'حذف'})))return;

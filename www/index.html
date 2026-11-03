@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>أسواق بدر</title>
+<title>RMT System</title>
 <style id="pgs">@page{size:90mm auto;margin:0}</style>
 <style>
 :root{--bg:#f2f5f3;--card:#fff;--tx:#1b1f24;--mut:#6b7280;--pri:#0a9b57;--pri2:#067a44;--pl:#e3f6ec;--bd:#d6ddd9;--wr:#c2410c;--ok:#15803d;--bad:#b91c1c}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{height:100%;margin:0}
-body{background:var(--bg);color:var(--tx);font-family:Tahoma,"Segoe UI",Arial,sans-serif;font-size:15px}
-button{font:inherit;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:8px;padding:8px 12px;cursor:pointer}
+body{background:var(--bg);color:var(--tx);font-family:Tahoma,"Segoe UI",Arial,sans-serif;font-size:16px}
+button{font:inherit;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:10px;padding:10px 15px;cursor:pointer}
 button:hover{border-color:var(--pri)}
 button.p{background:var(--pri);color:#fff;border-color:var(--pri);font-weight:700}
 button.p:hover{background:var(--pri2)}
@@ -26,9 +26,9 @@ input[type=checkbox]{width:auto}
 .pre{white-space:pre-line}
 .err{color:var(--bad)}
 .tw{overflow:auto}
-table{width:100%;border-collapse:collapse;font-size:14px;background:#fff}
+table{width:100%;border-collapse:collapse;font-size:15px;background:#fff}
 th{background:var(--pl);color:var(--pri2);position:sticky;top:0}
-th,td{border-bottom:1px solid var(--bd);padding:6px 5px;text-align:center}
+th,td{border-bottom:1px solid var(--bd);padding:8px 6px;text-align:center}
 td.l,th.l{text-align:right}
 tr.clk{cursor:pointer}tr.clk:hover td{background:var(--pl)}
 td input{padding:5px;text-align:center;direction:ltr;min-width:70px}
@@ -38,14 +38,15 @@ td input{padding:5px;text-align:center;direction:ltr;min-width:70px}
 .lbl{font-size:13px;color:var(--mut);margin:6px 0 2px}
 /* shell */
 #login{position:fixed;inset:0;background:var(--bg);z-index:9;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:10px;padding:24px}
-#login img{width:220px;height:220px;object-fit:contain}
+#login img{width:280px;height:280px;object-fit:contain}
 #login input,#login button{max-width:320px}
 #app{display:flex;flex-direction:column;height:100vh}
 #top{background:var(--pri);color:#fff;display:flex;align-items:center;gap:10px;padding:5px 12px}
-#top img{height:40px;width:40px;object-fit:contain;background:#fff;border-radius:8px;padding:2px}
+#top img{height:58px;width:58px;object-fit:contain;background:#fff;border-radius:10px;padding:3px}
 #top button{background:rgba(255,255,255,.18);color:#fff;border-color:transparent}
 #main{flex:1;overflow:auto;padding:12px}
 #main.posm{padding:0;overflow:hidden}
+.licbar{background:#fff4d6;color:#7a4b00;text-align:center;padding:5px 10px;font-weight:700;font-size:14px;border-bottom:1px solid #f0d79a}
 .credit{text-align:center;font-size:11px;color:var(--mut);padding:2px;direction:ltr}
 #md{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:20;display:flex;align-items:center;justify-content:center;padding:16px}
 #mb{width:100%;max-width:460px;max-height:92vh;overflow:auto}
@@ -54,7 +55,9 @@ td input{padding:5px;text-align:center;direction:ltr;min-width:70px}
 #toast.show{display:block}#toast.err{background:var(--bad)}
 /* home */
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
-.tile2{background:#fff;border:2px solid var(--bd);border-radius:14px;padding:22px 14px;font-size:19px;font-weight:700;text-align:center;display:flex;flex-direction:column;gap:8px;align-items:stretch}
+.tile2{background:#fff;border:2px solid var(--bd);border-radius:16px;padding:26px 14px;font-size:21px;font-weight:700;text-align:center;display:flex;flex-direction:column;gap:10px;align-items:stretch;justify-content:center}
+.tile2 .ico{font-size:64px;line-height:1.1;display:block}
+.tiles.hm{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
 button.tile2:hover{border-color:var(--pri);background:var(--pl)}
 .tile2.open{border-color:var(--pri);background:var(--pl)}
 /* POS */
@@ -69,7 +72,7 @@ button.tile2:hover{border-color:var(--pri);background:var(--pl)}
 .ln .t{font-weight:700}
 .ot{padding:8px 10px;font-size:22px;font-weight:700;display:flex;justify-content:space-between;border-top:2px solid var(--pri)}
 .npd{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:6px}
-.npd button{padding:12px 0;font-size:20px}
+.npd button{padding:14px 0;font-size:22px}
 .paybtn{margin:6px;padding:16px;font-size:20px}
 .pm{flex:1;display:flex;flex-direction:column;min-width:0}
 .obar{display:flex;gap:6px;align-items:center;padding:6px 8px;background:#fff;border-bottom:1px solid var(--bd);overflow-x:auto;white-space:nowrap}
@@ -82,7 +85,7 @@ button.tile2:hover{border-color:var(--pri);background:var(--pl)}
 .cats button{flex:none}
 .cats button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
 .grid{flex:1;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:6px;padding:8px;align-content:start}
-.tile{background:#fff;border:1px solid var(--bd);border-radius:8px;padding:8px;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between;min-height:82px;font-size:13px;text-align:center}
+.tile{background:#fff;border:1px solid var(--bd);border-radius:10px;padding:10px;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between;min-height:96px;font-size:15px;text-align:center}
 .tile:hover{border-color:var(--pri);background:var(--pl)}
 .tile .pr{color:var(--pri2);font-weight:700;font-size:14px;margin-top:4px}
 /* price inquiry */
@@ -98,30 +101,41 @@ button.tile2:hover{border-color:var(--pri);background:var(--pl)}
 .rcpt .nm{text-align:right}
 .rr{display:flex;justify-content:space-between;font-weight:700;margin-top:3px;font-size:13px}
 #pa{display:none}
+.a4doc{background:#fff;color:#000;font-family:Tahoma,Arial,sans-serif;direction:rtl;font-size:14px;width:auto;padding:0}
+.a4doc img.pl{display:block;margin:0 auto 6px;height:70px;object-fit:contain}
+.a4doc h2{text-align:center;margin:4px 0}
+.a4doc table{background:#fff;margin-top:8px}
+.a4doc th,.a4doc td{border:1px solid #000;padding:5px 6px;color:#000;background:#fff;position:static}
+.a4doc .mt{display:flex;justify-content:space-between;gap:10px;margin:3px 0}
+.a4doc .gt2{text-align:left;font-size:18px;font-weight:700;margin-top:10px}
+.sync{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;font-weight:700}
+.sy-ok{background:#d5f2df;color:#166534}.sy-no{background:#fde7d3;color:#9a3412}.sy-er{background:#fbd5d5;color:#991b1b}
 @media print{body>*:not(#pa){display:none!important}body{background:#fff}#pa{display:block!important;border:0;margin:0}}
 </style>
 </head>
 <body>
 <div id="pa" class="rcpt"></div>
 <div id="login">
-  <img src="logo.png" alt="أسواق بدر">
+  <img class="applogo" src="logo.png" alt="RMT System">
   <input type="text" id="lu" placeholder="اسم المستخدم" autocomplete="off">
   <input type="password" id="lp" placeholder="الرقم السري" autocomplete="off">
   <div id="le" class="err" style="min-height:20px"></div>
   <button class="p" id="lb">تسجيل الدخول</button>
-  <div class="credit">تصميم Mahmoud Thabet</div>
+  <button id="lAct" data-a="actPanel0">🔑 تفعيل البرنامج</button>
+  <div class="credit">تصميم Mahmoud Thabet — واتس اب 01003057942</div>
 </div>
 <div id="app" hidden>
   <div id="top">
     <button data-a="switchUser" title="تبديل المستخدم / تغيير الصلاحية">🔄 تبديل المستخدم</button>
-    <img src="logo.png" alt="">
-    <b style="font-size:18px">أسواق بدر</b>
+    <img class="applogo" src="logo.png" alt="">
+    <b style="font-size:18px">RMT System</b>
     <span id="who" style="flex:1;opacity:.9"></span>
     <button data-a="home">🏠 الرئيسية</button>
     <button data-a="logout">خروج</button>
   </div>
+  <div id="lic" class="licbar" hidden></div>
   <div id="main"></div>
-  <div class="credit">تصميم Mahmoud Thabet</div>
+  <div class="credit">تصميم Mahmoud Thabet — واتس اب 01003057942</div>
 </div>
 <div id="md" hidden><div id="mb"></div></div>
 <div id="toast"></div>
@@ -134,6 +148,12 @@ button.tile2:hover{border-color:var(--pri);background:var(--pl)}
 <script src="js/inv.js"></script>
 <script src="js/acc.js"></script>
 <script src="js/hr.js"></script>
+<script src="js/lic.js"></script>
+<script src="js/br.js"></script>
+<script src="js/offers.js"></script>
+<script src="js/prod.js"></script>
+<script src="js/mfg.js"></script>
+<script src="js/odoo.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

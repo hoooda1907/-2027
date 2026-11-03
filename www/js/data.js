@@ -45,6 +45,12 @@ function search(q,limit){
   return out;
 }
 const pPrice=p=>{const v=parseFloat(p.price);return isNaN(v)?0:v};
+/* السعر الفعلي: سعر العرض لو العرض ساري، وإلا السعر العادي (ينتهي العرض تلقائيًا ويعود السعر) */
+const offerBrOn=br=>{const m=D.set.offerBr||{};return br?m[br]!==false:BR.some(b=>m[b]!==false)};
+function effPrice(p,br){const n=pPrice(p),o=p.offer;if(o&&offerBrOn(br)&&Date.now()>=o.start&&Date.now()<=o.end&&o.price<n)return{price:o.price,orig:n,offer:true};return{price:n,orig:n,offer:false}}
+const savings=r=>r.type==='return'?0:r2(r.lines.reduce((s,l)=>s+Math.max(0,(l.orig||l.pre||l.price)-(l.pre||l.price))*l.qty,0));
+/* منع البيع بأقل من التكلفة، إلا لمن لديه الصلاحية أو إذا فُعّل «السماح بالبيع بخسارة» في المنتج */
+const lossBlocked=(p,price)=>{const c=pCost(p);return c>0&&price<c&&!(p.allowLoss||can('pos_sell_loss'))};
 const pCost=p=>{const v=parseFloat(p.cost);return isNaN(v)?0:v};
 
 /* ===== المخزون ===== */

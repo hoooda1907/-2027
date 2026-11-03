@@ -1,31 +1,42 @@
 /* ===== المخزون ===== */
-const INV={tab:'bal',tr:{from:BR[2],to:BR[0],lines:[]},cn:{br:BR[0],lines:[]}};
+const INV={lim:150,tab:'bal',tr:{from:'',to:'',lines:[]},cn:{br:'',lines:[]}};
+function invFix(){
+  if(!BR.includes(INV.tr.from))INV.tr.from=BR[0];
+  if(!BR.includes(INV.tr.to)||(INV.tr.to===INV.tr.from&&BR.length>1))INV.tr.to=BR.find(b=>b!==INV.tr.from)||BR[0];
+  if(!BR.includes(INV.cn.br))INV.cn.br=BR[0];
+}
 const tabs=(cur,list,act)=>`<div class="row" style="margin-bottom:10px">${list.map(x=>`<button class="${cur===x[0]?'p':''}" data-a="${act}" data-v="${x[0]}">${x[1]}</button>`).join('')}</div>`;
 V.inventory=()=>{
   if(!can('inv_view')){say('ليس لديك صلاحية المخزون',1);return go('home')}
+  invFix();
   const T=[['bal','الأرصدة'],['tr','التحويل بين الفروع'],['cn','الجرد الفعلي']];
   setMain(`<div class="ttl">المخزون</div>${tabs(INV.tab,T,'invTab')}<div id="invB"></div>`);
   ({bal:invBal,tr:invTr,cn:invCn})[INV.tab]();
 };
 A.invTab=t=>{INV.tab=t.dataset.v;V.inventory()};
 
-/* --- الأرصدة --- */
+/* --- الأرصدة (فلترة بالفئة / الرصيد / ترتيب بالسعر) --- */
 function invBal(){
-  $('invB').innerHTML=`<div class="card"><div class="row"><input id="ivQ" data-i="ivQ" placeholder="بحث بالاسم أو الباركود" style="max-width:300px"><select id="ivBr" data-c="ivQ" style="max-width:200px"><option value="">كل الفروع</option>${BR.map(b=>`<option>${b}</option>`).join('')}</select><label><input type="checkbox" id="ivNz" data-c="ivQ"> ما له رصيد فقط</label>
+  $('invB').innerHTML=`<div class="card"><div class="row"><input id="ivQ" data-i="ivQ" placeholder="بحث بالاسم أو الباركود" style="max-width:260px"><select id="ivBr" data-c="ivQ" style="max-width:190px"><option value="">كل الفروع</option>${BR.map(b=>`<option>${esc(b)}</option>`).join('')}</select>
+  <select id="ivCat" data-c="ivQ" style="max-width:210px">${optList(distinct('cat'),'','كل الفئات')}</select><select id="ivSort" data-c="ivQ" style="max-width:200px">${SORTS}</select>
+  <label><input type="checkbox" id="ivNz" data-c="ivQ"> ما له رصيد فقط</label>
   ${can('inv_adjust')?'<button data-a="ivImp">📥 استيراد أرصدة من Excel</button>':''}</div></div><div class="card" id="ivL"></div>`;
-  ivList();
+  INV.lim=150;ivList();
 }
-I.ivQ=C.ivQ=()=>ivList();
+I.ivQ=C.ivQ=()=>{INV.lim=150;ivList()};
+A.ivMore=()=>{INV.lim+=300;ivList()};
 function ivList(){
-  const q=norm($('ivQ').value),br=$('ivBr').value,nz=$('ivNz').checked;
-  const cols=br?[br]:BR;let n=0,rows='';
-  const src=q?search(q,400):D.products;
-  for(let i=0;i<src.length&&n<150;i++){
-    const p=src[i],v=cols.map(b=>stk(b,p.id)),tot=r3(v.reduce((a,b)=>a+b,0));
-    if(nz&&!tot)continue;n++;
-    rows+=`<tr><td>${esc(p.bc)}</td><td class="l">${esc(p.name)}</td><td>${esc(p.cat)}</td>${v.map(x=>`<td${x<0?' style="color:var(--bad)"':''}>${fmt(x)}</td>`).join('')}${br?'':`<td><b>${fmt(tot)}</b></td>`}${can('inv_adjust')?`<td><button data-a="ivAdj" data-id="${esc(p.id)}">تسوية</button></td>`:''}</tr>`;
-  }
-  $('ivL').innerHTML=tbl(['الباركود','الاسم','الفئة'].concat(cols,br?[]:['الإجمالي'],can('inv_adjust')?['']:[]),rows)+`<div class="mut" style="margin-top:6px">يظهر أول 150 صنفًا — استخدم البحث للوصول لأي صنف.</div>`;
+  const q=norm($('ivQ').value),br=$('ivBr').value,nz=$('ivNz').checked,cat=$('ivCat').value;
+  const cols=br?[br]:BR;
+  let src=q?search(q,100000):D.products.slice();
+  if(cat)src=src.filter(p=>p.cat===cat);
+  const rowsData=[];
+  src.forEach(p=>{const v=cols.map(b=>stk(b,p.id)),tot=r3(v.reduce((a,b)=>a+b,0));if(nz&&!tot)return;rowsData.push({p,v,tot})});
+  const so=$('ivSort').value;
+  if(so==='hi')rowsData.sort((a,b)=>pPrice(b.p)-pPrice(a.p));else if(so==='lo')rowsData.sort((a,b)=>pPrice(a.p)-pPrice(b.p));
+  else rowsData.sort((a,b)=>String(a.p.name).localeCompare(String(b.p.name),'ar'));
+  const rows=rowsData.slice(0,INV.lim).map(({p,v,tot})=>`<tr><td>${esc(p.bc)}</td><td class="l">${esc(p.name)}</td><td>${esc(p.cat)}</td><td>${money(pPrice(p))}</td>${v.map(x=>`<td${x<0?' style="color:var(--bad)"':''}>${fmt(x)}</td>`).join('')}${br?'':`<td><b>${fmt(tot)}</b></td>`}${can('inv_adjust')?`<td><button data-a="ivAdj" data-id="${esc(p.id)}">تسوية</button></td>`:''}</tr>`).join('');
+  $('ivL').innerHTML=`<div class="mut" style="margin-bottom:6px">عدد الأصناف المطابقة: ${rowsData.length}</div>`+tbl(['الباركود','الاسم','الفئة','السعر'].concat(cols,br?[]:['الإجمالي'],can('inv_adjust')?['']:[]),rows)+(rowsData.length>INV.lim?`<button style="width:100%;margin-top:8px" data-a="ivMore">عرض المزيد (${rowsData.length-INV.lim})</button>`:'');
 }
 A.ivAdj=async t=>{
   const p=PI.id[t.dataset.id];

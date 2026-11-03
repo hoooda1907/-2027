@@ -2,26 +2,31 @@
 const PR={t:null};
 function enter(){
   $('login').hidden=true;$('app').hidden=false;
-  $('who').textContent='👤 '+ME.name;go('home');
+  $('who').textContent='👤 '+ME.name;licBanner();go('home');
 }
 function authUser(u,p){
   u=nm(u);p=norm(dg(p));
   if(u===nm('Mahmoud'))return H('owner|'+p)===OWNER_H?{name:'Mahmoud',owner:true,admin:true,perms:{}}:null;
-  if(u===nm('أسواق بدر'))return(!D.set.adminDeleted&&H('admin|'+p)===(D.set.adminH||ADMIN_H0))?{name:'أسواق بدر',admin:true,isAdmin:true,perms:{}}:null;
+  if(u===nm(adminName()))return(!D.set.adminDeleted&&H('admin|'+p)===(D.set.adminH||ADMIN_H0))?{name:adminName(),admin:true,isAdmin:true,perms:{}}:null;
   const e=D.employees.find(x=>x.active!==false&&x.pin&&nm(x.name)===u&&x.pin===p);
-  return e?{name:e.name,perms:e.perms||{},maxOrders:e.maxOrders||3}:null;
+  return e?{name:e.name,perms:e.perms||{},maxOrders:e.maxOrders||3,maxDisc:e.maxDisc>=0?e.maxDisc:10}:null;
 }
 function doLogin(){
   const f=authUser($('lu').value,$('lp').value);
-  if(f){ME=f;$('le').textContent='';$('lp').value='';enter()}
-  else $('le').textContent='اسم المستخدم أو الرقم السري غير صحيح';
+  if(!f){$('le').textContent='اسم المستخدم أو الرقم السري غير صحيح';return}
+  if(!licStatus().ok&&!f.owner){
+    $('le').textContent='انتهت مدة الاستخدام — يلزم تفعيل البرنامج';$('lp').value='';
+    actPanel(licTxt());return;
+  }
+  ME=f;$('le').textContent='';$('lp').value='';enter();
 }
 A.switchUser=async()=>{
   if(!ME)return;
   const r=await formDlg('تبديل المستخدم',[{k:'u',l:'اسم المستخدم'},{k:'p',l:'الرقم السري',t:'password'}],'تبديل');
   if(!r)return;const f=authUser(r.u,r.p);
   if(!f){say('بيانات الدخول غير صحيحة',1);return}
-  ME=f;$('who').textContent='👤 '+ME.name;say('تم التبديل إلى '+ME.name);
+  if(!licStatus().ok&&!f.owner){say('انتهت مدة الاستخدام — يلزم التفعيل',1);return}
+  ME=f;$('who').textContent='👤 '+ME.name;licBanner();say('تم التبديل إلى '+ME.name);
   if(LAST.v==='pos'&&POS.ses&&POS.ses.status==='open'&&can('pos_sell')&&posAllowed(POS.ses.br,POS.ses.pos)){POS.oid=0;go('pos')}
   else go('home');
 };
@@ -29,7 +34,7 @@ $('lb').onclick=doLogin;
 $('lp').onkeydown=e=>{if(e.key==='Enter')doLogin()};
 $('lu').onkeydown=e=>{if(e.key==='Enter')$('lp').focus()};
 A.logout=()=>{
-  clearInterval(PR.t);ME=null;POS.ses=null;POS.oid=0;
+  clearInterval(PR.t);ME=null;POS.ses=null;POS.oid=0;licBanner();
   $('app').hidden=true;$('login').hidden=false;$('lu').value='';$('lu').focus();
 };
 
@@ -44,15 +49,38 @@ V.home=()=>{
    ['👤 العملاء','customers',()=>can('cus_view')],
    ['🚚 الموردين','suppliers',()=>can('acc_suppliers')],
    ['👥 الموظفون والصلاحيات','employees',()=>can('hr_view')],
+   ['📋 المنتجات','products',()=>can('prod_view')],
+   ['🏭 التصنيع','mfg',()=>can('mfg_view')],
    ['🏷️ الاستعلام عن السعر','price',()=>true],
    ['📂 استيراد وتحديث البيانات','imports',()=>can('sys_import')],
+   ['🏬 الفروع ونقاط البيع','branches',()=>can('sys_branches')],
+   ['🔗 الربط مع أودو','odoo',()=>can('sys_odoo')],
    ['⚙️ الإعدادات','settings',()=>!!ME.admin],
    ['🗂️ فتح مجلد البرنامج','folder',()=>api&&(can('acc_reports')||can('sys_import'))]
   ].filter(t=>t[2]());
   setMain(`<div class="ttl">مرحبًا ${esc(ME.name)}</div><div class="mut" style="margin-bottom:10px">المنتجات المحمّلة: ${D.products.length} — الموردين: ${D.suppliers.length} — الموظفين: ${D.employees.length}${D.products.length?'':' — <b class="err">استورد ملف المنتجات أولًا من «استيراد وتحديث البيانات»</b>'}</div>
-  <div class="tiles">${T.map(t=>`<button class="tile2" data-a="${t[1]==='folder'?'openFolder':'go'}" data-v="${t[1]}">${t[0]}</button>`).join('')}</div>`);
+  <div class="tiles hm">${T.map(t=>{const i=t[0].indexOf(' ');return `<button class="tile2" data-a="${t[1]==='folder'?'openFolder':'go'}" data-v="${t[1]}"><span class="ico">${t[0].slice(0,i)}</span><span>${t[0].slice(i+1)}</span></button>`}).join('')}</div>`);
 };
 A.openFolder=()=>{if(api)api.openFolder()};
+
+/* ===== شعار المحل ===== */
+C.logoFile=t=>{
+  const f=t.files[0];if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    const im=new Image();
+    im.onload=()=>{
+      const k=Math.min(1,500/Math.max(im.width,im.height)),cv=document.createElement('canvas');
+      cv.width=Math.max(1,Math.round(im.width*k));cv.height=Math.max(1,Math.round(im.height*k));
+      cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);
+      D.set.logo=cv.toDataURL('image/png');save('set');applyLogo();say('تم تغيير الشعار');
+    };
+    im.onerror=()=>say('تعذر قراءة الصورة',1);
+    im.src=rd.result;
+  };
+  rd.readAsDataURL(f);
+};
+A.logoReset=()=>{delete D.set.logo;save('set');applyLogo();say('تمت استعادة الشعار الافتراضي')};
 
 /* ===== الاستعلام عن السعر ===== */
 V.price=()=>{
@@ -67,8 +95,8 @@ K.prQ=(t,e)=>{
 };
 A.prPick=t=>prShow(PI.id[t.dataset.id],0);
 function prShow(p,w){
-  const price=parseFloat(p.price),has=!isNaN(price);let n=5;
-  $('main').innerHTML=`<div class="pq"><div class="nm">${esc(p.name)}</div><div class="pc">${has?money(price):'غير متوفر'}</div>${w>0&&has?`<div style="font-size:26px;color:var(--ok)">السعر للكجم — الوزن ${fmt(w)} كجم = ${money(price*w)}</div>`:''}<div class="mut" id="prC">العودة تلقائيًا بعد ${n} ثوانٍ</div><button class="p" style="font-size:20px;padding:12px 30px" data-a="prBack">↩️ عودة للاستعلام</button></div>`;
+  const ef=effPrice(p),price=ef.price,has=!isNaN(parseFloat(p.price));let n=5;
+  $('main').innerHTML=`<div class="pq"><div class="nm">${esc(p.name)}</div><div class="pc">${has?money(price):'غير متوفر'}</div>${ef.offer?`<div style="font-size:28px;color:var(--wr)">🏷️ عرض — السعر الأصلي <s>${money(ef.orig)}</s> — توفير ${money(ef.orig-price)}</div>`:''}${w>0&&has?`<div style="font-size:26px;color:var(--ok)">السعر للكجم — الوزن ${fmt(w)} كجم = ${money(price*w)}</div>`:''}<div class="mut" id="prC">العودة تلقائيًا بعد ${n} ثوانٍ</div><button class="p" style="font-size:20px;padding:12px 30px" data-a="prBack">↩️ عودة للاستعلام</button></div>`;
   clearInterval(PR.t);
   PR.t=setInterval(()=>{n--;if(n<=0){clearInterval(PR.t);V.price()}else if($('prC'))$('prC').textContent=`العودة تلقائيًا بعد ${n} ثوانٍ`},1000);
 }
@@ -101,13 +129,16 @@ C.impFile=async t=>{
 /* ===== الإعدادات ===== */
 const fdate=t=>t?new Date(t).toLocaleString('ar-EG'):'—';
 V.settings=async()=>{
+  setTimeout(applyLogo,0);
   if(!ME.admin){say('للإدارة فقط',1);return go('home')}
   const info=api?await api.info():null,bks=(ME.owner&&api)?await api.listBackups():[];
   setMain(`<div class="ttl">الإعدادات</div>
+  <div class="card"><div class="ttl" style="font-size:17px">شعار المحل</div><div class="row"><img class="applogo" src="logo.png" alt="" style="height:96px;max-width:200px;object-fit:contain;background:#fff;border:1px solid var(--bd);border-radius:10px;padding:4px"><div style="flex:1"><div class="mut">ارفع شعارك الخاص (PNG أو JPG) ليظهر على الفواتير المطبوعة (المبيعات والمشتريات) وفي الواجهة بدل شعار البرنامج.</div><input type="file" accept="image/*" data-c="logoFile" style="margin-top:6px"></div><button class="d" data-a="logoReset">استعادة الشعار الافتراضي</button></div></div>
   <div class="card"><div class="ttl" style="font-size:17px">النسخ الاحتياطي</div>
    <div class="mut">مسار الحفظ: ${esc(info?info.root:'—')}</div><div class="mut">نسخة تلقائية كل ساعتين — آخر نسخة: ${esc(info?fdate(info.last):'—')}</div>
    <div class="row" style="margin-top:8px"><button class="p" data-a="bkNow">💾 نسخة احتياطية الآن</button><button data-a="openFolder">📂 فتح مجلد البرنامج</button></div></div>
-  <div class="card"><div class="ttl" style="font-size:17px">حساب الإدارة</div><button data-a="admPw">🔑 تغيير كلمة المرور</button></div>
+  <div class="card"><div class="ttl" style="font-size:17px">التفعيل والترخيص</div><div class="${licStatus().ok?'':'err'}">${esc(licTxt())}</div><div class="mut">للتواصل: ${CONTACT}</div><div class="mut">رقم هذا الجهاز: <b style="direction:ltr;display:inline-block">${esc(MID)}</b></div><button class="p" style="margin-top:8px" data-a="licOwner">🔑 تفعيل البرنامج</button></div>
+  <div class="card"><div class="ttl" style="font-size:17px">حساب الإدارة</div><div class="mut">اسم الحساب الحالي: ${esc(adminName())}</div><button data-a="admPw">🔑 تغيير اسم المستخدم / كلمة المرور</button></div>
   ${ME.owner?`<div class="card"><div class="ttl" style="font-size:17px">استرجاع نسخة احتياطية</div>${bks.length?tbl(['النسخة','الحجم','التاريخ',''],bks.slice(0,40).map(b=>`<tr><td class="l">${esc(b.name)}</td><td>${Math.round(b.size/1024)} ك.ب</td><td>${esc(fdate(b.mtime))}</td><td><button data-a="bkRestore" data-n="${esc(b.name)}">استرجاع</button></td></tr>`).join('')):'<div class="mut">لا توجد نسخ</div>'}</div>
   <div class="card"><div class="ttl" style="font-size:17px">حساب الإدارة (للمالك فقط)</div><button class="${D.set.adminDeleted?'p':'d'}" data-a="admToggle">${D.set.adminDeleted?'إعادة إنشاء حساب الإدارة':'حذف حساب الإدارة'}</button></div>
   <div class="card"><div class="ttl" style="font-size:17px">حذف بيانات البرنامج</div><div class="mut">يحذف كل المنتجات والمبيعات والأرصدة والموردين والموظفين من داخل البرنامج.</div><button class="d" style="margin-top:8px" data-a="wipeAll">🗑 حذف بيانات البرنامج</button></div>`:''}`);
@@ -117,12 +148,16 @@ A.bkNow=async()=>{
   await flush();const n=await api.backupNow();say(n?'تم إنشاء النسخة الاحتياطية':'لا توجد بيانات لنسخها',!n);V.settings();
 };
 A.admPw=async()=>{
-  const f=(ME.owner?[]:[{k:'c',l:'كلمة المرور الحالية',t:'password'}]).concat([{k:'n',l:'كلمة المرور الجديدة',t:'password'},{k:'n2',l:'تأكيد كلمة المرور الجديدة',t:'password'}]);
-  const r=await formDlg('تغيير كلمة مرور حساب الإدارة',f,'تغيير');if(!r)return;
+  const f=[{k:'u',l:'اسم المستخدم',v:adminName()}].concat(ME.owner?[]:[{k:'c',l:'كلمة المرور الحالية',t:'password'}],[{k:'n',l:'كلمة المرور الجديدة (اتركها فارغة لعدم التغيير)',t:'password'},{k:'n2',l:'تأكيد كلمة المرور الجديدة',t:'password'}]);
+  const r=await formDlg('بيانات حساب الإدارة',f,'حفظ');if(!r)return;
   if(!ME.owner&&H('admin|'+norm(dg(r.c)))!==(D.set.adminH||ADMIN_H0)){say('كلمة المرور الحالية غير صحيحة',1);return}
-  const n=norm(dg(r.n));
-  if(n.length<4||n!==norm(dg(r.n2))){say('كلمة المرور الجديدة غير صالحة أو غير متطابقة (4 خانات على الأقل)',1);return}
-  D.set.adminH=H('admin|'+n);save('set');await flush();say('تم تغيير كلمة المرور');
+  const u=norm(r.u),n=norm(dg(r.n));
+  if(!u){say('اكتب اسم المستخدم',1);return}
+  if(nm(u)===nm('Mahmoud')||D.employees.some(e=>nm(e.name)===nm(u))){say('هذا الاسم مستخدم بالفعل',1);return}
+  if(n&&(n.length<4||n!==norm(dg(r.n2)))){say('كلمة المرور الجديدة غير صالحة أو غير متطابقة (4 خانات على الأقل)',1);return}
+  D.set.adminName=u;if(n)D.set.adminH=H('admin|'+n);save('set');await flush();
+  if(ME.isAdmin){ME.name=u;$('who').textContent='👤 '+u}
+  say('تم حفظ بيانات الحساب');V.settings();
 };
 A.admToggle=async()=>{
   if(!ME.owner)return;
@@ -171,6 +206,7 @@ async function seedCustomers(){
 
 /* ===== تشغيل ===== */
 (async()=>{
-  await dbLoad();reindex();await seedIfNeeded();await seedCustomers();
+  await dbLoad();reindex();applyLogo();await licInit();await seedIfNeeded();await seedCustomers();licBanner();
+  setInterval(()=>{odTick();licTick();licBanner();if(ME&&!ME.owner&&!licStatus().ok){A.logout();actPanel('انتهت مدة الاستخدام — يلزم تفعيل البرنامج')}},60000);
   $('lu').focus();
 })();
