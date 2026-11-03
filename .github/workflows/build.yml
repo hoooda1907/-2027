@@ -16,5 +16,5 @@ jobs:
       - run: npx electron-builder --win --publish never
       - uses: actions/upload-artifact@v5
         with:
-          name: aswaq-badr-windows
+          name: rmt-system-windows
           path: dist/*.exe
