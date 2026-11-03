@@ -1,8 +1,8 @@
 {
-  "name": "aswaq-badr",
+  "name": "rmt-system",
   "version": "1.0.0",
-  "description": "Aswaq Badr - POS, receiving and inventory",
-  "author": "Aswaq Badr",
+  "description": "RMT System - POS, purchases, inventory and accounting",
+  "author": "RMT System",
   "main": "electron-main.js",
   "private": true,
   "scripts": {
@@ -16,8 +16,8 @@
     "electron-builder": "24.13.3"
   },
   "build": {
-    "appId": "com.aswaqbadr.pos",
-    "productName": "AswaqBadr",
+    "appId": "com.rmtsystem.pos",
+    "productName": "RMT System",
     "files": [
       "electron-main.js",
       "electron-preload.js",
@@ -34,11 +34,12 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "shortcutName": "أسواق بدر",
-      "artifactName": "AswaqBadr-Setup.${ext}"
+      "shortcutName": "RMT System",
+      "artifactName": "RMT-System-Setup.${ext}"
     },
     "portable": {
-      "artifactName": "AswaqBadr-Portable.${ext}"
+      "artifactName": "RMT-System-Portable.${ext}"
     }
-  }
+  },
+  "productName": "RMT System"
 }

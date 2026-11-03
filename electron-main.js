@@ -2,17 +2,18 @@ const { app, BrowserWindow, Menu, ipcMain, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
+const os = require('os');
 
 /* منع فتح أكثر من نسخة من البرنامج */
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) app.quit();
 
 let win = null;
-/* مسار الحفظ: بارتشن D ثم مجلد "أسواق بدر" (وإن لم يوجد D فمجلد المستندات) */
+/* مسار الحفظ: بارتشن D ثم مجلد "RMT System" (وإن لم يوجد D فمجلد المستندات) */
 const root = () => {
   let base;
   try { base = fs.existsSync('D:\\') ? 'D:\\' : app.getPath('documents'); } catch (e) { base = app.getPath('documents'); }
-  return path.join(base, 'أسواق بدر');
+  return path.join(base, 'RMT System');
 };
 const safe = (s) => String(s || '').replace(/[\\/:*?"<>|]/g, '_').replace(/[. ]+$/, '').slice(0, 120) || '_';
 const dbDir = () => { const d = path.join(app.getPath('userData'), 'db'); fs.mkdirSync(d, { recursive: true }); return d; };
@@ -43,6 +44,11 @@ ipcMain.handle('db-save', async (e, k, v) => {
   fs.renameSync(tmp, f);
   return true;
 });
+
+/* ===== الترخيص: نسختان خارج قاعدة البيانات ===== */
+const licFiles = () => [path.join(app.getPath('userData'), 'lic.dat'), path.join(os.homedir(), '.rmt-system.lic')];
+ipcMain.handle('lic-load', async () => licFiles().map((f) => { try { return fs.readFileSync(f, 'utf8'); } catch (e) { return null; } }));
+ipcMain.handle('lic-save', async (e, t) => { licFiles().forEach((f) => { try { fs.writeFileSync(f, t); } catch (er) {} }); return true; });
 
 /* ===== النسخ الاحتياطي (كل ساعتين) ===== */
 const p2 = (n) => String(n).padStart(2, '0');
@@ -94,7 +100,7 @@ function startBackupTimer() {
 
 function createWindow() {
   win = new BrowserWindow({
-    width: 1280, height: 860, title: 'أسواق بدر', autoHideMenuBar: true,
+    width: 1280, height: 860, title: 'RMT System', autoHideMenuBar: true,
     icon: path.join(__dirname, 'build', 'icon.png'),
     webPreferences: { contextIsolation: true, nodeIntegration: false, preload: path.join(__dirname, 'electron-preload.js') }
   });
